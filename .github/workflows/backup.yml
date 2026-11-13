@@ -1,14 +1,25 @@
 name: Nightly backup
 
-# Dumps the team's drawings (projects + shared library + allowlist) to a PRIVATE
-# Supabase Storage bucket `backups` every night (RISK_REVIEW R1). Files rotate by
-# day-of-month (backup-01.json … backup-31.json), so ~a month of restore points
-# with zero cleanup logic. NOT a GitHub artifact — this repo is public and the
-# drawings must stay private.
+# Dumps the team's drawings (projects + shared library + folders + allowlist +
+# profiles + the audit log) to a PRIVATE Supabase Storage bucket `backups` every
+# night (RISK_REVIEW R1). Files rotate by day-of-month (backup-01.json …
+# backup-31.json), so ~a month of restore points with zero cleanup logic. NOT a
+# GitHub artifact — this repo is public and the drawings must stay private.
+#
+# Deliberately NOT dumped: project_revisions (20 full snapshots per project would
+# make every daily file ~20x bigger and the 31 rotating files could approach the
+# free 1 GB Storage quota; `projects` already holds the latest of every drawing).
 #
 # Needs repo Actions secrets: SUPABASE_URL + SUPABASE_SERVICE_KEY (service_role —
 # server-side only; GitHub encrypts secrets and scheduled runs never expose them
-# to forks). If either is unset, the job no-ops.
+# to forks).
+#
+# Fails LOUDLY (red run + GitHub's failure email) rather than skipping quietly —
+# a green run must always mean "a real backup was written" (RISK_REVIEW R4-1):
+#   - secrets missing                    → fail (it used to exit 0 = silent no-backup)
+#   - any table fetch / the upload fails → fail
+#   - `projects` came back EMPTY         → fail WITHOUT uploading, so an accidental
+#     wipe can't be rotated over the good backups night after night
 
 on:
   schedule:
@@ -25,8 +36,8 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
-            echo "Backup secrets not set — skipping."
-            exit 0
+            echo "::error::Backup secrets SUPABASE_URL / SUPABASE_SERVICE_KEY are not set — NO backup was taken. Add them under Settings → Secrets and variables → Actions."
+            exit 1
           fi
           auth=(-H "apikey: $SUPABASE_SERVICE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_KEY")
 
@@ -38,12 +49,22 @@ jobs:
           fetch library_items library.json
           fetch allowed_emails emails.json
           fetch folders folders.json
+          fetch profiles profiles.json            # display names + admin flags
+          fetch project_events events.json        # append-only audit log
+
+          # never rotate an empty dump over the good ones (accidental wipe / bad key scope)
+          if [ "$(jq 'length' projects.json)" = "0" ]; then
+            echo "::error::The projects table came back EMPTY — refusing to overwrite a backup with it. If the team really has no projects, ignore this; otherwise check the database NOW (the older backup-*.json files are untouched)."
+            exit 1
+          fi
 
           jq -n --slurpfile p projects.json --slurpfile l library.json \
                 --slurpfile e emails.json --slurpfile f folders.json \
-            '{taken_at: (now | todate), projects: $p[0], library_items: $l[0], allowed_emails: $e[0], folders: $f[0]}' \
+                --slurpfile u profiles.json --slurpfile ev events.json \
+            '{taken_at: (now | todate), projects: $p[0], library_items: $l[0], allowed_emails: $e[0],
+              folders: $f[0], profiles: $u[0], project_events: $ev[0]}' \
             > dump.json
-          echo "dump size: $(wc -c < dump.json) bytes, $(jq '.projects | length' dump.json) projects"
+          echo "dump size: $(wc -c < dump.json) bytes, $(jq '.projects | length' dump.json) projects, $(jq '.project_events | length' dump.json) audit events, $(jq '.profiles | length' dump.json) profiles"
 
           day=$(date -u +%d)
           code=$(curl -s -o upload.out -w "%{http_code}" -X POST \

@@ -251,3 +251,50 @@ exploitable today. **The actionable HOW (exact file/code/test/deploy) lives in
 - **L2 — Supabase JWT in `localStorage`** (LOW, SDK default). Mitigated by CSP (M3). Accepted.
 - **Shared-tenancy** (any member reads/edits/deletes any project) — by design, not a vuln. Recorded in
   SECURITY.md.
+
+---
+
+# Round 4 — operations: backups after a quiet spell · 2026-11-13 · `main` @ `4416704`
+
+Trigger: GitHub auto-disabled the scheduled **Nightly backup** + **Supabase keep-alive** workflows
+(`disabled_inactivity` — GitHub's rule: scheduled workflows stop after 60 days with no repository
+activity). Last runs 2026-10-01, found 2026-11-13 → **~6 weeks with no backups, and nothing told
+anyone.** Re-enabled + a manual backup taken the same day (`backup-13.json`, 6 projects). The review
+below asks "how else could backups be silently not happening, or be useless when needed?"
+
+## R4-1. Backups could stop silently — ✅ FIXED (detection + recovery) · ⏳ in-app visibility proposed
+- **Disabled-for-inactivity is not a failure**, so GitHub sends no email. → A local, monthly scheduled
+  task (**cabinet-backup-watchdog**, Claude desktop app, 1st of the month 09:00) checks both workflows,
+  re-enables any `disabled_inactivity` one (never a `disabled_manually` one), triggers a fresh backup
+  when the last good one is >2 days old or failed, and reports. It restores intended state like a
+  human would — it deliberately does **not** game the inactivity rule (no dummy commits; the
+  well-known third-party "keepalive" action that did that has been disabled by GitHub for ToS).
+  Limit: runs only when the PC + app are on (catch-up on next launch; 60-day window gives slack).
+- **A green run could mean "no backup"**: missing secrets made both jobs `exit 0` ("skipping").
+  → Now `exit 1` with a clear `::error::` → red run + GitHub's failure email.
+- **Nobody can see backup age.** → PROPOSED: record a heartbeat (last backup time / projects / size)
+  the app shows admins as a warning chip when stale — catches every cause (disabled, failing,
+  rotated key, deleted bucket) without depending on the PC watchdog. Needs a small table + schema re-run.
+
+## R4-2. Backup coverage gaps — ✅ FIXED (2 tables) · deliberate exclusion recorded
+- Dumped before: `projects`, `library_items`, `allowed_emails`, `folders`. **Missing:** `profiles`
+  (display names + admin flags) and `project_events` (the audit log — losing it breaks the
+  "deletes stay auditable" promise). → Both added.
+- **`project_revisions` deliberately NOT dumped**: 20 full snapshots per project would grow every
+  daily file ~20× and the 31 rotating files toward the free 1 GB Storage quota. `projects` holds the
+  latest of every drawing; revisions are convenience history.
+
+## R4-3. An accidental wipe would be rotated over the good backups — ✅ FIXED
+- If `projects` were emptied (bad bulk delete, wrong key scope), the nightly job would happily upload
+  an empty dump, overwriting one good restore point per night. → The job now **refuses to upload when
+  `projects` comes back empty** and fails loudly; older backup files stay untouched.
+
+## R4-4. Backups are not off-site; uploaded part DXFs aren't backed up — ⏳ OPEN (needs a decision)
+- The `backups` bucket lives **in the same Supabase project it protects**. Losing the project (e.g. a
+  free project paused past its restore window, or account trouble) loses drawings AND backups together.
+- The `equipment` Storage bucket (raw DXFs of uploaded parts, needed for DXF export) is not in any
+  backup. Today the only off-platform copy is a per-project **Bundle** export, done by hand.
+- Constraints: the repo is public (no GitHub artifacts), and the service-role key must stay only in
+  Render env + Actions secrets (so a local script can't pull the private bucket). Options to decide
+  with the engineer — e.g. an admin-only "Download latest backup" in the app (private, manual) that
+  the monthly watchdog reminds about, or a free off-site bucket with its own credentials.

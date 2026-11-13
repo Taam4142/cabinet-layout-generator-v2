@@ -2,7 +2,10 @@ name: Supabase keep-alive
 
 # Supabase free projects pause after 7 days of inactivity. A light REST ping every
 # few days keeps it awake. Needs repo secrets SUPABASE_URL + SUPABASE_ANON_KEY
-# (Settings → Secrets and variables → Actions). If they're unset, the job no-ops.
+# (Settings → Secrets and variables → Actions). If they're unset the run FAILS
+# (red + GitHub's failure email) instead of passing green while doing nothing.
+# NOTE: GitHub disables scheduled workflows after 60 days with no repo activity —
+# the local monthly "cabinet-backup-watchdog" task re-enables this + the backup.
 
 on:
   schedule:
@@ -19,8 +22,8 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "Supabase secrets not set — skipping keep-alive."
-            exit 0
+            echo "::error::Supabase secrets SUPABASE_URL / SUPABASE_ANON_KEY are not set — keep-alive did NOT ping."
+            exit 1
           fi
           code=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "apikey: $SUPABASE_ANON_KEY" \

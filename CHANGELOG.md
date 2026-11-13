@@ -23,6 +23,17 @@ re-tagged here at the same commits so the whole story lives in one place._
 - Pure tested core `share/viewport.ts` (fit · zoom-about-a-point · pinch · limits · wheel delta);
   verified in a browser at desktop + phone size (no page scroll, pinch reaches the viewer).
 
+### Fixed — backups can no longer stop (or skip) silently
+- GitHub had auto-disabled the scheduled **Nightly backup** + **Supabase keep-alive** workflows after
+  60 quiet days (no backups 2026-10-01 → 11-13, unnoticed). Both re-enabled and a fresh backup taken;
+  a local monthly **watchdog** task now re-enables them if it happens again and triggers a backup.
+- A missing secret used to make both jobs pass **green while doing nothing** — they now fail loudly
+  (red run + GitHub's failure email).
+- The backup now also covers **`profiles`** (names, admin flags) and **`project_events`** (the audit
+  log). `project_revisions` stays out on purpose (storage quota) — see RISK_REVIEW Round 4.
+- **Empty-table guard:** if `projects` ever comes back empty the job refuses to overwrite a backup with
+  it, so an accidental wipe can't be rotated over the good restore points.
+
 ## [1.0.0] — 2026-07-25 — production-hardened
 
 All three phases shipped and in real use, deployed on Cloudflare Pages + Render + Supabase and twice
