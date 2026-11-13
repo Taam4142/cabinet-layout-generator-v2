@@ -10,7 +10,18 @@ re-tagged here at the same commits so the whole story lives in one place._
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added — zoom & pan on the read-only share page
+- **The share-link page is now a real drawing viewer.** The drawing fills the window (slim header with
+  the PDF/PNG/BOM downloads on top) instead of a 1100 px column, starts fitted to the whole plate, and
+  can be zoomed down to the part tags: **scroll/trackpad** zooms at the cursor, **drag** pans,
+  **double-click** zooms in, **pinch / one-finger drag** on phones and tablets, keys **+ − 0** and the
+  **arrows**, and floating **− · % · + · Fit** buttons (% is relative to the whole-plate fit).
+- Zoom re-lays-out the image instead of CSS-scaling it, so the vector drawing is re-rasterised and
+  stays **crisp at every level** (up to 10 px/mm — a 2.5 mm tag reads at ~25 px). The drawing is still
+  an `<img>` data URI (shared content can't execute), and it is now built **once** per load rather than
+  on every re-render.
+- Pure tested core `share/viewport.ts` (fit · zoom-about-a-point · pinch · limits · wheel delta);
+  verified in a browser at desktop + phone size (no page scroll, pinch reaches the viewer).
 
 ## [1.0.0] — 2026-07-25 — production-hardened
 
