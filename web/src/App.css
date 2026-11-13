@@ -47,6 +47,19 @@
 .svc-offline { color: #c00; border-color: #f2c2c2; background: #fdf0f0; }
 .svc-offline .dot { background: #c00; }
 .svc-checking .dot { background: #d0a000; }
+/* backup-age chip (admins only) — links to the Nightly backup workflow on GitHub */
+.toolbar a.bk {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none;
+  font-size: 12px; padding: 5px 10px; border-radius: 12px;
+  background: #f4f4f5; color: #444; border: 1px solid #e0e0e0;
+}
+.toolbar a.bk:hover { filter: brightness(0.97); }
+.bk .dot { width: 8px; height: 8px; border-radius: 50%; background: #aaa; }
+.toolbar a.bk.bk-ok { color: #1a7f37; border-color: #b6e3c2; background: #eefaf1; }
+.bk-ok .dot { background: #1a7f37; }
+.toolbar a.bk.bk-stale, .toolbar a.bk.bk-missing { color: #b42318; border-color: #f2c2c2; background: #fdf0f0; font-weight: 600; }
+.bk-stale .dot, .bk-missing .dot { background: #c00; }
+.bk-unknown .dot { background: #d0a000; }
 
 .status { font-size: 12px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status.ok { color: #1a7f37; }

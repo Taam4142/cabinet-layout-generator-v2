@@ -274,3 +274,23 @@ drop policy if exists "members add events" on public.project_events;
 create policy "members add events" on public.project_events
   for insert with check (public.is_member() and actor = auth.uid());
 -- no update/delete policies: the audit trail is append-only.
+
+-- =====================================================================
+-- System status — small key/value heartbeats (RISK_REVIEW R4-1)
+-- Written ONLY by server-side jobs with the service role (which bypasses RLS);
+-- members can read. First use: the nightly backup job upserts key 'backup' =
+-- {file, projects, bytes} + updated_at after each successful upload, and the app
+-- shows admins a "Backup: N h ago" chip that turns red when it goes stale — so a
+-- stopped backup (schedule disabled, secret expired, job failing) can't go unnoticed.
+-- =====================================================================
+create table if not exists public.system_status (
+  key        text primary key,
+  value      jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.system_status enable row level security;
+drop policy if exists "members read status" on public.system_status;
+create policy "members read status" on public.system_status
+  for select using (public.is_member());
+-- no insert/update/delete policies: only the service role (the backup job) writes.

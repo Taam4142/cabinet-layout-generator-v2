@@ -10,6 +10,7 @@ import type { Library, DxfLibItem, RectLibItem } from "./model/types";
 import { useAuth } from "./auth/AuthContext";
 import { projectLocal } from "./store/projectStore";
 import { useCloudProjects, type Status } from "./store/useCloudProjects";
+import { useBackupHealth } from "./store/backupStatus";
 import RevisionsModal from "./editor/RevisionsModal";
 import { downloadLayout, pickLayoutFile } from "./store/localFile";
 import { saveDraft, loadDraft, clearDraft } from "./store/draft";
@@ -56,6 +57,8 @@ export default function App() {
   // ── Phase 2: auth + cloud-saved projects ───────────────────────────────────
   const auth = useAuth();
   const ready = auth.status === "ready"; // signed in + allow-listed
+  // admin-only "Backup: N h ago" chip — a stopped nightly backup can't go unnoticed (RISK_REVIEW R4-1)
+  const backup = useBackupHealth(ready && auth.profile?.is_admin === true);
   const [nameDraft, setNameDraft] = useState("");
   const [sharedLib, setSharedLib] = useState<Library>({}); // the shared equipment catalog (library_items)
   const [sharedLoaded, setSharedLoaded] = useState(false); // catalog fetch finished (gates draft restore)
@@ -394,7 +397,7 @@ export default function App() {
     <div className="app">
       <Toolbar
         model={model} auth={auth} ready={ready} dirty={dirty} status={status} busy={busy}
-        lastSaved={cloud.lastSaved} cloudBusy={cloud.cloudBusy} svc={svc}
+        lastSaved={cloud.lastSaved} cloudBusy={cloud.cloudBusy} svc={svc} backup={backup}
         dxfScale={dxfScale} paper={paper} zoom={zoom} alignEnabled={alignEnabled}
         canUndo={canUndo} canRedo={canRedo}
         onRename={renameProject} onNew={doNewProject} onOpenProjects={cloud.openProjectsModal}

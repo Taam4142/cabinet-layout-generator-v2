@@ -11,6 +11,7 @@ import { clampZoom } from "./zoom";
 import type { DxfScale } from "../service/dxfClient";
 import type { Paper } from "../render/page";
 import type { Status } from "../store/useCloudProjects";
+import { BACKUP_ACTIONS_URL, type BackupHealth } from "../lib/backupHealth";
 
 interface Props {
   model: LayoutModel;
@@ -22,6 +23,8 @@ interface Props {
   lastSaved: { name: string | null; at: string } | null;
   cloudBusy: boolean;
   svc: "checking" | "online" | "offline";
+  /** admin-only backup-age chip; null = don't show (members, no cloud) */
+  backup: BackupHealth | null;
   dxfScale: DxfScale;
   paper: Paper;
   zoom: number;
@@ -55,7 +58,7 @@ interface Props {
 }
 
 export default function Toolbar({
-  model, auth, ready, dirty, status, busy, lastSaved, cloudBusy, svc, dxfScale, paper,
+  model, auth, ready, dirty, status, busy, lastSaved, cloudBusy, svc, backup, dxfScale, paper,
   zoom, alignEnabled, canUndo, canRedo,
   onRename, onNew, onOpenProjects, onSave, onDuplicate, onDownload, onOpenFile, onBundle, shareableId, onShare,
   onUndo, onRedo, onZoom, onFit, onAlign, onCheckSvc, onDxfScale, onPaper,
@@ -155,6 +158,12 @@ export default function Toolbar({
         <span className="group">
           {cloudEnabled && ready && auth.profile ? (
             <span className="acct">
+              {backup && (
+                <a className={`bk bk-${backup.level}`} href={BACKUP_ACTIONS_URL} target="_blank" rel="noopener noreferrer"
+                  title={`${backup.detail}\n\n(Admins only.)`}>
+                  <span className="dot" /> {backup.label}
+                </a>
+              )}
               <span className="name" title={auth.email ?? ""}>{auth.profile.display_name || auth.email}</span>
               <button type="button" onClick={auth.signOut}>Sign out</button>
             </span>

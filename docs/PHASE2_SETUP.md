@@ -181,6 +181,25 @@ re-run once.
 
 > Nothing on Render/Cloudflare changes for this step — it's a Supabase-schema-only addition.
 
+## Backup health chip (admins) — one schema re-run
+
+Admins see a **"Backup: N h ago"** chip next to their name in the toolbar. It turns **red** when the
+newest backup is over 2 days old (or none has ever reported), so a stopped nightly backup can't go
+unnoticed. Clicking it opens the **Nightly backup** workflow on GitHub. Members never see it.
+
+1. **Schema (once):** SQL Editor → run the full `supabase/schema.sql` again (idempotent). This adds the
+   `system_status` table + RLS (members read; only the backup job's service role writes).
+2. **Fill it now:** GitHub → **Actions** → **Nightly backup** → **Run workflow**. The log ends with
+   `Heartbeat recorded: …`. (Before step 1 it logs a yellow warning instead — the backup itself still
+   succeeds.)
+3. **Verify:** reload the app as an admin → the chip reads **Backup: just now** in green.
+   - Until step 1 is done the chip reads **Backup: unknown** (amber).
+   - Only users with `profiles.is_admin = true` see it (see supabase/README.md for the bootstrap).
+
+> If the chip ever goes red: open it → check the latest run. Common causes: GitHub disabled the
+> schedule after 60 quiet days (the monthly **cabinet-backup-watchdog** task re-enables it), or a
+> secret was rotated. See RISK_REVIEW Round 4.
+
 ## Security hardening (fail-closed service)
 
 One env change on Render makes the service **fail closed** — a missing `SUPABASE_JWT_SECRET` returns

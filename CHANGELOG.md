@@ -23,6 +23,17 @@ re-tagged here at the same commits so the whole story lives in one place._
 - Pure tested core `share/viewport.ts` (fit · zoom-about-a-point · pinch · limits · wheel delta);
   verified in a browser at desktop + phone size (no page scroll, pinch reaches the viewer).
 
+### Added — "Backup: N h ago" chip for admins
+- Admins see the age of the newest nightly backup next to their name in the toolbar — green when
+  fresh, **red once it's over 2 days old** (or none has reported), amber if the status can't be read.
+  Click it to open the **Nightly backup** workflow on GitHub; it refreshes when you come back to the
+  tab. Members never see it. Catches every way a backup can stop (schedule disabled, secret expired,
+  job failing) — not just the one that happened.
+- The backup job now writes a small heartbeat (`system_status`: file · projects · size · time) after
+  each successful upload; a failed heartbeat only warns (the backup is already safe).
+- Pure tested core `lib/backupHealth.ts`. **Action needed once:** re-run `supabase/schema.sql`
+  (adds `system_status` + RLS), then run the backup once from GitHub Actions — see PHASE2_SETUP.
+
 ### Fixed — backups can no longer stop (or skip) silently
 - GitHub had auto-disabled the scheduled **Nightly backup** + **Supabase keep-alive** workflows after
   60 quiet days (no backups 2026-10-01 → 11-13, unnoticed). Both re-enabled and a fresh backup taken;

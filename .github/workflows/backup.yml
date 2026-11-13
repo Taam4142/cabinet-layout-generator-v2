@@ -73,3 +73,18 @@ jobs:
             "$SUPABASE_URL/storage/v1/object/backups/backup-$day.json")
           if [ "$code" != "200" ]; then echo "UPLOAD failed: HTTP $code"; cat upload.out; exit 1; fi
           echo "Uploaded backups/backup-$day.json"
+
+          # Heartbeat for the admin "Backup: N h ago" chip in the app (RISK_REVIEW R4-1).
+          # Best-effort: the backup itself is already safe, so a failed heartbeat only WARNS —
+          # and the chip then shows stale/unknown, so the gap is still visible to admins.
+          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          beat=$(jq -n --arg f "backup-$day.json" --arg t "$now" \
+                       --argjson p "$(jq '.projects | length' dump.json)" --argjson b "$(wc -c < dump.json)" \
+                   '{key: "backup", updated_at: $t, value: {file: $f, projects: $p, bytes: $b}}')
+          code=$(curl -s -o beat.out -w "%{http_code}" -X POST "${auth[@]}" \
+            -H "Content-Type: application/json" -H "Prefer: resolution=merge-duplicates,return=minimal" \
+            --data "$beat" "$SUPABASE_URL/rest/v1/system_status")
+          case "$code" in
+            200|201|204) echo "Heartbeat recorded: $beat" ;;
+            *) echo "::warning::Backup OK, but the heartbeat wasn't recorded (HTTP $code). Re-run supabase/schema.sql once to add public.system_status."; cat beat.out ;;
+          esac

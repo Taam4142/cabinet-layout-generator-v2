@@ -262,7 +262,7 @@ activity). Last runs 2026-10-01, found 2026-11-13 → **~6 weeks with no backups
 anyone.** Re-enabled + a manual backup taken the same day (`backup-13.json`, 6 projects). The review
 below asks "how else could backups be silently not happening, or be useless when needed?"
 
-## R4-1. Backups could stop silently — ✅ FIXED (detection + recovery) · ⏳ in-app visibility proposed
+## R4-1. Backups could stop silently — ✅ FIXED (watchdog recovery + loud failures + in-app backup-age chip)
 - **Disabled-for-inactivity is not a failure**, so GitHub sends no email. → A local, monthly scheduled
   task (**cabinet-backup-watchdog**, Claude desktop app, 1st of the month 09:00) checks both workflows,
   re-enables any `disabled_inactivity` one (never a `disabled_manually` one), triggers a fresh backup
@@ -272,9 +272,11 @@ below asks "how else could backups be silently not happening, or be useless when
   Limit: runs only when the PC + app are on (catch-up on next launch; 60-day window gives slack).
 - **A green run could mean "no backup"**: missing secrets made both jobs `exit 0` ("skipping").
   → Now `exit 1` with a clear `::error::` → red run + GitHub's failure email.
-- **Nobody can see backup age.** → PROPOSED: record a heartbeat (last backup time / projects / size)
-  the app shows admins as a warning chip when stale — catches every cause (disabled, failing,
-  rotated key, deleted bucket) without depending on the PC watchdog. Needs a small table + schema re-run.
+- **Nobody could see backup age.** → ✅ SHIPPED 2026-11-13: the job upserts a heartbeat into
+  `system_status` (key `backup`: file · projects · bytes · updated_at) after each successful upload;
+  admins see a toolbar chip "Backup: N h ago" that turns red past 48 h (or when none reported) and
+  amber when unreadable. Catches every cause (disabled, failing, rotated key, deleted bucket) without
+  depending on the PC watchdog. Needs one `schema.sql` re-run (PHASE2_SETUP → Backup health chip).
 
 ## R4-2. Backup coverage gaps — ✅ FIXED (2 tables) · deliberate exclusion recorded
 - Dumped before: `projects`, `library_items`, `allowed_emails`, `folders`. **Missing:** `profiles`

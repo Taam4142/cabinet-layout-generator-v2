@@ -99,12 +99,15 @@ cabinet-layout-generator-v2/
 │     ├─ editor/                   FabricStage (canvas view-binding) · useHistory (undo/redo) · zoom ·
 │     │                            Toolbar · LibrarySidebar · PropertiesPanel · OpenDialog ·
 │     │                            modals: Upload / EditPart / Insert / Bom / Revisions(+Activity) / Share
-│     ├─ share/ShareViewer.tsx     anonymous read-only viewer (?share=<token>)
+│     ├─ share/                    ShareViewer (anonymous read-only ?share=<token>) · DrawingViewport
+│     │                            (full-window pan/zoom) · viewport (pure zoom/pan math, tested)
 │     ├─ store/                    projectStore (cloud projects+folders+revisions+audit+share, stale-save CAS) ·
 │     │                            useCloudProjects (open/save/dup/folders/history hook) ·
-│     │                            libraryStore (shared parts, rowToItem) · draft (crash copy) · localFile (JSON)
+│     │                            libraryStore (shared parts, rowToItem) · draft (crash copy) · localFile (JSON) ·
+│     │                            backupStatus (backup heartbeat read + useBackupHealth hook)
 │     ├─ auth/                     SignInGate · AuthProvider/Context · auth.css
-│     ├─ lib/                      supabaseClient (client + accessToken) · timeAgo · shareToken
+│     ├─ lib/                      supabaseClient (client + accessToken) · timeAgo · shareToken ·
+│     │                            backupHealth (admin backup-age chip logic, tested)
 │     ├─ service/dxfClient.ts      the ONLY code that talks to the ezdxf service (export/upload/ping/fetchBlock)
 │     └─ App.tsx + App.css         the shell (~500 lines: state + wiring; views extracted)
 └─ service/                        FastAPI + ezdxf 1.4.4, deployed on Render

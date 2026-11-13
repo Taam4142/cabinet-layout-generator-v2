@@ -4,6 +4,7 @@
 (never apply partial diffs). It sets up, all under **RLS** that gates every table on being
 allow-listed: **email allowlist** + **profiles** · **projects** (each layout one `jsonb` blob) +
 **project_revisions** (last-20 history) + **project_events** (append-only audit log) + **folders** ·
+**system_status** (heartbeats the nightly backup writes; powers the admin backup-age chip) ·
 the shared **library_items** catalog · **share tokens** + the `shared_project(token)` anonymous
 read-only RPC. Helper functions `is_member()` / `is_admin()` are `SECURITY DEFINER`.
 
